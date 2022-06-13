@@ -1,0 +1,51 @@
+
+// 多元回归的检验和回归模型以及如何修正都包括了
+// 但是！ 只能解决有一种违反假设的情况，如果违背多个假设就没有办法解决了
+//
+
+
+
+ cd D:\学术\多元回归\Stata多元回归
+ 
+ 
+ * 提取数据
+ use gdpimex.dta,clear
+ 
+ * log 处理(先不做)
+ gen y = log(gdp)
+ gen X1 = log(export)
+ gen X2 = log(import)
+ 
+ 
+*1 做多元回归模型
+tsset year_raw
+
+*3 做异方差检验
+regress y X1 X2
+estat dwatson
+predict u,resid  // 得到新残差
+gen u2 = u*u  //新建残差平方
+scatter u2 X1  
+scatter u2 X2
+* 上面三个三点图看残差和每一个自变量是否有关系
+estat imtest,white  //做怀特检验，原假设为同方差，若拒绝原假设则存在异方差
+regress y X1 X2,robust  //如果存在异方差则做修正
+estat dwatson
+
+*2 做自相关检验
+predict u1,resid  //得到残差，记为u
+twoway line u1 year_raw // 画残差图看是否有自相关
+scatter u1 L.u1      //画残差和残差滞后项散点图看是否有自相关
+estat dwatson    // 百度查表，原假设为不存在自相关，不在DL和DU之间则可以拒绝 
+prais y X1 X2, corc  // 如果有自相关，则做自相关修正，用科克伦奥克特方法
+
+
+*5 做多重共线性检验
+corr y X1 X2
+estat vif //VIF大于10的变量都存在多重共线性
+stepwise regress  y X1 X2 X3,r pr(0.05) //如果有多重共线性做逐步回归，r不知道什么意思(本例不用)
+
+
+
+
+
